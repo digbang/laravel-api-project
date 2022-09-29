@@ -15,7 +15,7 @@ class AppServiceProvider extends ServiceProvider
      * @var array
      */
     public $bindings = [
-        UserRepository::class => EloquentUserRepository::class,
+        //
     ];
 
     /**
