@@ -10,6 +10,7 @@ use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class Handler extends ExceptionHandler
@@ -51,11 +52,11 @@ class Handler extends ExceptionHandler
     public function register()
     {
         $this->renderable(function (AuthenticationException $e) {
-            return $this->respond($e, ErrorCode::AUTHENTICATION_EXCEPTION, 401);
+            return $this->respond($e, ErrorCode::AUTHENTICATION_EXCEPTION, Response::HTTP_UNAUTHORIZED);
         });
 
         $this->renderable(function (DomainException $e) {
-            return $this->respond($e, $e->getErrorCode(), $e->getStatusCode());
+            return $this->respond($e, $e->getErrorCode(), $e->getCode());
         });
 
         $this->renderable(function (HttpExceptionInterface $e) {
@@ -73,8 +74,27 @@ class Handler extends ExceptionHandler
         });
     }
 
-    private function respond(\Throwable $e, ErrorCode $error = ErrorCode::GENERIC_ERROR, int $status = 500, array $additional = []): JsonResponse
+    /**
+     * Register a renderable callback.
+     *
+     * @param callable $renderUsing
+     * @return $this
+     */
+    public function renderable(callable $renderUsing)
     {
+        if (request()->is('api/*')) {
+            return parent::renderable($renderUsing);
+        }
+
+        return $this;
+    }
+
+    private function respond(
+        \Throwable $e,
+        ErrorCode $error = ErrorCode::GENERIC_ERROR,
+        int $status = Response::HTTP_INTERNAL_SERVER_ERROR,
+        array $additional = [],
+    ): JsonResponse {
         $resource = ErrorResource::make($error, $e->getMessage());
 
         $resource->additional($additional);
@@ -88,7 +108,7 @@ class Handler extends ExceptionHandler
 
     private function addStackTrace(JsonResource $resource, \Throwable $e): void
     {
-        if (config('app.debug')) {
+        if (app()->hasDebugModeEnabled()) {
             $additional = collect($resource->additional)->merge([
                 'meta' => [
                     'exception' => get_class($e),
