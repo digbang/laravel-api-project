@@ -2,8 +2,6 @@
 
 namespace App\Providers;
 
-use Domain\Repositories\Contracts\UserRepository;
-use Domain\Repositories\EloquentUserRepository;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
 
